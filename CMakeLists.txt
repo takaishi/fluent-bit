@@ -121,6 +121,7 @@ option(FLB_FILTER_THROTTLE "Enable throttle filter"             Yes)
 option(FLB_FILTER_RECORD_MODIFIER "Enable record_modifier filter" Yes)
 option(FLB_FILTER_NEST     "Enable nest filter"                   Yes)
 option(FLB_FILTER_LUA      "Enable Lua scripting filter"          Yes)
+option(FLB_FILTER_MRUBY      "Enable Lua scripting filter"          Yes)
 
 # Enable all features
 if(FLB_ALL)
@@ -190,6 +191,7 @@ include_directories(
   lib/sha1
   lib/msgpack-2.1.3/include
   lib/luajit-2.0.5/src/
+  lib/mruby/src/
   ${MONKEY_INCLUDE_DIR}
   )
 
