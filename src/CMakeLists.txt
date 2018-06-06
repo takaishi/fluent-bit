@@ -136,6 +136,12 @@ if(FLB_LUAJIT)
     "libluajit")
 endif()
 
+if(FLB_MRUBY)
+  set(extra_libs
+    ${extra_libs}
+    "libmruby")
+endif()
+
 if(FLB_SQLDB)
   set(src
     ${src}

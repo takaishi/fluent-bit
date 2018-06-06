@@ -159,7 +159,9 @@ if(FLB_LUAJIT)
   REGISTER_FILTER_PLUGIN("filter_lua")
 endif()
 
-REGISTER_FILTER_PLUGIN("filter_mruby")
+if(FLB_MRUBY)
+  REGISTER_FILTER_PLUGIN("filter_mruby")
+endif()
 
 REGISTER_FILTER_PLUGIN("filter_record_modifier")
 REGISTER_FILTER_PLUGIN("filter_nest")
