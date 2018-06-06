@@ -48,6 +48,7 @@ option(FLB_SQLDB              "Enable SQL embedded DB"        No)
 option(FLB_HTTP_SERVER        "Enable HTTP Server"            No)
 option(FLB_BACKTRACE          "Enable stacktrace support"    Yes)
 option(FLB_LUAJIT             "Enable Lua Scripting support" Yes)
+option(FLB_MRUBY              "Enable mruby Scripting support" Yes)
 
 # Metrics: Experimental Feature, disabled by default on 0.12 series
 # but enabled in the upcoming 0.13 release. Note that development
@@ -441,6 +442,19 @@ if(FLB_LUAJIT)
   add_dependencies(libluajit luajit)
   include_directories("${CMAKE_CURRENT_BINARY_DIR}/include/")
   FLB_DEFINITION(FLB_HAVE_LUAJIT)
+endif()
+
+if(FLB_MRUBY)
+  set(MRUBY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lib/mruby)
+  ExternalProject_Add(mruby
+    SOURCE_DIR ${MRUBY_PATH}
+    BUILD_COMMAND rake all
+    INSTALL_COMMAND cp ${MRUBY_PATH}/build/host/lib/libmruby.a "${CMAKE_CURRENT_BINARY_DIR}/lib/libmruby.a")
+  add_library(libmruby STATIC IMPORTED GLOBAL)
+  set_target_properties(libmruby PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/lib/libmruby.a")
+  add_dependencies(libmruby mruby)
+  include_directories("${CMAKE_CURRENT_SOURCE_DIR}/lib/mruby/include/")
+  FLB_DEFINITION(FLB_HAVE_MRUBY)
 endif()
 
 # Pthread Local Storage

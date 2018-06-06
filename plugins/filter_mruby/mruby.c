@@ -1,23 +1,30 @@
 #include <fluent-bit/flb_config.h>
 #include <msgpack.h>
+#include <fluent-bit.h>
+#include "mruby_config.h"
 
 #define FLB_FILTER_MODIFIED 1
 #define FLB_FILTER_NOTOUCH  2
 
-struct flb_filter_plugin {
-  int flags;
-  char *name;
-  char *description;
-
-  int (*cb_init) (struct flb_filter_instance *, struct flb_config *, void *);
-  int (*cb_filter) (void *, size_t, char *, int, void **, size_t *, struct flb_filter_instance *, void *, struct flb_config *);
-  int (*cb_exit) (void *, struct flb_config *);
-};
+//struct flb_filter_plugin {
+//  int flags;
+//  char *name;
+//  char *description;
+//
+//  int (*cb_init) (struct flb_filter_instance *, struct flb_config *, void *);
+//  int (*cb_filter) (void *, size_t, char *, int, void **, size_t *, struct flb_filter_instance *, void *, struct flb_config *);
+//  int (*cb_exit) (void *, struct flb_config *);
+//};
 
 static int cb_mruby_init(struct flb_filter_instance *f_ins,
                          struct flb_config *config,
                          void *data)
 {
+
+    struct mruby_filter *ctx;
+
+    ctx = flb_calloc(1, sizeof(struct mruby_filter));
+    ctx->mrb = mrb_open();
    return 0;
 }
 
