@@ -42,7 +42,7 @@ struct flb_filter_plugin filter_mruby_plugin = {
     .name         = "mruby",
     .description  = "mruby Scriptiong Filter",
     .cb_init      = cb_mruby_init,
-    .cb_exit      = cb_mruby_filter,
+    .cb_filter    = cb_mruby_filter,
     .cb_exit      = cb_mruby_exit,
     .flags        = 0
 };
