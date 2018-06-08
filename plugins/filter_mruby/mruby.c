@@ -1,6 +1,8 @@
 #include <fluent-bit/flb_config.h>
 #include <msgpack.h>
 #include <fluent-bit.h>
+#include <fluent-bit/flb_time.h>
+
 #include "mruby_config.h"
 
 #define FLB_FILTER_MODIFIED 1
@@ -40,12 +42,37 @@ char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
 
     return str;
 }
+mrb_value em_mrb_method_count(mrb_state *mrb, mrb_value self)
+{
+    mf *mf_obj = (mf *)mrb->ud;
+    int count = mf_obj->count;
+
+    return mrb_fixnum_value(count);
+}
 
 static int cb_mruby_init(struct flb_filter_instance *f_ins,
                          struct flb_config *config,
                          void *data)
 {
     printf("[DEBUG] cb_mruby_init\n");
+    struct mruby_filter *ctx;
+
+    struct mf_t *mf;
+    mf = flb_calloc(1, sizeof(struct mf_t));
+    mf->count = 0;
+    mf->mrb = mrb_open();
+    mf->mrb->ud = mf;
+
+    ctx = flb_calloc(1, sizeof(struct mruby_filter));
+    ctx->mf = mf;
+
+    struct RClass *class;
+    class = mrb_define_class(ctx->mf->mrb, "Em", ctx->mf->mrb->object_class);
+
+    mrb_define_class_method(ctx->mf->mrb, class, "count", em_mrb_method_count, MRB_ARGS_NONE());
+
+    flb_filter_set_context(f_ins, ctx);
+
 
    return 0;
 }
@@ -59,21 +86,21 @@ static int cb_mruby_filter(void *data, size_t bytes,
 {
     printf("[DEBUG] cb_mruby_filter\n");
 
-    struct mruby_filter *ctx;
-
-    ctx = flb_calloc(1, sizeof(struct mruby_filter));
-    ctx->mrb = mrb_open();
-
-    mrb_value value;
-    mrbc_context *mrb_cxt;
+    struct mruby_filter *ctx = filter_context;
 
     char *str;
     char *res;
 
-    str = "1 + 1";
-    mrb_cxt = mrbc_context_new(ctx->mrb);
-    value = mrb_load_string_cxt(ctx->mrb, str, mrb_cxt);
+    mrb_value value;
+    mrbc_context *mrb_cxt;
+
+    str = "Em.count";
+    mrb_cxt = mrbc_context_new(ctx->mf->mrb);
+    value = mrb_load_string_cxt(ctx->mf->mrb, str, mrb_cxt);
     res = em_mrb_value_to_str(ctx, value);
+    ctx->mf->count++;
+
+
 
     printf("%s\n", res);
    return FLB_FILTER_MODIFIED;
@@ -82,6 +109,11 @@ static int cb_mruby_filter(void *data, size_t bytes,
 static int cb_mruby_exit(void *data, struct flb_config *config)
 {
     printf("[DEBUG] cb_mruby_exit\n");
+    struct mruby_filter *ctx;
+
+    ctx = data;
+    mrb_close(ctx->mf->mrb);
+    free(ctx->mf);
  return 0;
 }
 

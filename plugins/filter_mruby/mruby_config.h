@@ -7,6 +7,12 @@
 #include "mruby/compile.h"
 #include "mruby/string.h"
 
-struct mruby_filter {
+typedef struct mf_t {
+    int count;
     struct mrb_state *mrb;
+
+} mf;
+
+struct mruby_filter {
+    struct mf_t *mf;
 };
