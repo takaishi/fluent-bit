@@ -40,7 +40,7 @@ char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
 
         }
         case MRB_TT_STRING: {
-            asprintf(&str, "(string) %s\n", mrb_str_to_cstr(core, value));
+            asprintf(&str, "(string) %s\n", RSTRING_PTR( value ));
             break;
         }
     }
@@ -64,6 +64,14 @@ mrb_value em_mrb_method_timestamp(mrb_state *mrb, mrb_value self)
     return mrb_float_value(mrb, ts);
 }
 
+mrb_value em_mrb_method_tag(mrb_state *mrb, mrb_value self)
+{
+    mf *mf_obj = (mf *)mrb->ud;
+    char *tag = mf_obj->tag;
+
+    return mrb_str_new_cstr(mrb, tag);
+}
+
 static int cb_mruby_init(struct flb_filter_instance *f_ins,
                          struct flb_config *config,
                          void *data)
@@ -85,6 +93,7 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
 
     mrb_define_class_method(ctx->mf->mrb, class, "count", em_mrb_method_count, MRB_ARGS_NONE());
     mrb_define_class_method(ctx->mf->mrb, class, "timestamp", em_mrb_method_timestamp, MRB_ARGS_NONE());
+    mrb_define_class_method(ctx->mf->mrb, class, "tag", em_mrb_method_tag, MRB_ARGS_NONE());
 
     flb_filter_set_context(f_ins, ctx);
 
@@ -128,10 +137,11 @@ static int cb_mruby_filter(void *data, size_t bytes,
         ts = flb_time_to_double(&t);
 
         ctx->mf->ts = ts;
+        ctx->mf->tag = tag;
         mrb_value value;
         mrbc_context *mrb_cxt;
 
-        str = "p Em.timestamp";
+        str = "p Em.tag";
         mrb_cxt = mrbc_context_new(ctx->mf->mrb);
         value = mrb_load_string_cxt(ctx->mf->mrb, str, mrb_cxt);
         res = em_mrb_value_to_str(ctx, value);
