@@ -34,6 +34,11 @@ char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
             break;
 
         }
+        case MRB_TT_FLOAT: {
+            asprintf(&str, "(float) %lf\n",mrb_float(value));
+            break;
+
+        }
         case MRB_TT_STRING: {
             asprintf(&str, "(string) %s\n", mrb_str_to_cstr(core, value));
             break;
@@ -42,12 +47,21 @@ char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
 
     return str;
 }
+
 mrb_value em_mrb_method_count(mrb_state *mrb, mrb_value self)
 {
     mf *mf_obj = (mf *)mrb->ud;
     int count = mf_obj->count;
 
     return mrb_fixnum_value(count);
+}
+
+mrb_value em_mrb_method_timestamp(mrb_state *mrb, mrb_value self)
+{
+    mf *mf_obj = (mf *)mrb->ud;
+    double ts = mf_obj->ts;
+
+    return mrb_float_value(mrb, ts);
 }
 
 static int cb_mruby_init(struct flb_filter_instance *f_ins,
@@ -70,6 +84,7 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
     class = mrb_define_class(ctx->mf->mrb, "Em", ctx->mf->mrb->object_class);
 
     mrb_define_class_method(ctx->mf->mrb, class, "count", em_mrb_method_count, MRB_ARGS_NONE());
+    mrb_define_class_method(ctx->mf->mrb, class, "timestamp", em_mrb_method_timestamp, MRB_ARGS_NONE());
 
     flb_filter_set_context(f_ins, ctx);
 
@@ -88,22 +103,44 @@ static int cb_mruby_filter(void *data, size_t bytes,
 
     struct mruby_filter *ctx = filter_context;
 
+    size_t off = 0;
+    double ts;
+    msgpack_object *p;
+    msgpack_sbuffer tmp_sbuf;
+    msgpack_packer tmp_pck;
+    msgpack_unpacked result;
+    struct flb_time t;
     char *str;
     char *res;
 
-    mrb_value value;
-    mrbc_context *mrb_cxt;
+    msgpack_sbuffer_init(&tmp_sbuf);
+    msgpack_packer_init(&tmp_pck, &tmp_sbuf, msgpack_sbuffer_write);
 
-    str = "Em.count";
-    mrb_cxt = mrbc_context_new(ctx->mf->mrb);
-    value = mrb_load_string_cxt(ctx->mf->mrb, str, mrb_cxt);
-    res = em_mrb_value_to_str(ctx, value);
-    ctx->mf->count++;
+    msgpack_unpacked_init(&result);
+    while (msgpack_unpack_next(&result, data, bytes, &off)) {
+        msgpack_packer data_pck;
+        msgpack_sbuffer data_sbuf;
+
+        msgpack_sbuffer_init(&data_sbuf);
+        msgpack_packer_init(&data_pck, &data_sbuf, msgpack_sbuffer_write);
+
+        flb_time_pop_from_msgpack(&t, &result, &p);
+        ts = flb_time_to_double(&t);
+
+        ctx->mf->ts = ts;
+        mrb_value value;
+        mrbc_context *mrb_cxt;
+
+        str = "p Em.timestamp";
+        mrb_cxt = mrbc_context_new(ctx->mf->mrb);
+        value = mrb_load_string_cxt(ctx->mf->mrb, str, mrb_cxt);
+        res = em_mrb_value_to_str(ctx, value);
+        ctx->mf->count++;
 
 
-
-    printf("%s\n", res);
-   return FLB_FILTER_MODIFIED;
+    }
+    printf("res = %s\n", res);
+    return FLB_FILTER_MODIFIED;
 }
 
 static int cb_mruby_exit(void *data, struct flb_config *config)

@@ -9,6 +9,7 @@
 
 typedef struct mf_t {
     int count;
+    double ts;
     struct mrb_state *mrb;
 
 } mf;
