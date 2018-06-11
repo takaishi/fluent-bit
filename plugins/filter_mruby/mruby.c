@@ -45,9 +45,6 @@ char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
             break;
         }
         case MRB_TT_HASH: {
-            mrb_value keys = mrb_hash_keys(core, value);
-            int len = RARRAY_LEN(keys);
-            for (int i = 0; i < len; i++) {
             char *inspect = mrb_str_to_cstr(core, mrb_inspect(core, value));
             asprintf(&str, "(hash) %s\n", inspect);
         }
