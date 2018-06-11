@@ -10,16 +10,6 @@
 #define FLB_FILTER_MODIFIED 1
 #define FLB_FILTER_NOTOUCH  2
 
-//struct flb_filter_plugin {
-//  int flags;
-//  char *name;
-//  char *description;
-//
-//  int (*cb_init) (struct flb_filter_instance *, struct flb_config *, void *);
-//  int (*cb_filter) (void *, size_t, char *, int, void **, size_t *, struct flb_filter_instance *, void *, struct flb_config *);
-//  int (*cb_exit) (void *, struct flb_config *);
-//};
-
 char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
     char *str;
     enum mrb_vtype type = mrb_type(value);
