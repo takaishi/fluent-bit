@@ -17,5 +17,9 @@ typedef struct mf_t {
 } mf;
 
 struct mruby_filter {
+    flb_sds_t script;
     struct mf_t *mf;
 };
+
+MRB_API mrb_value mrb_str_new_cstr(mrb_state*, const char*);
+mrb_value msgpack_obj_to_mrb_value(mrb_state*, msgpack_object*);

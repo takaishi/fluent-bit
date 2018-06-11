@@ -3,6 +3,7 @@
 #include <fluent-bit.h>
 #include <fluent-bit/flb_time.h>
 #include <mruby/hash.h>
+#include <mruby/include/mruby/variable.h>
 
 #include "mruby_config.h"
 
@@ -79,10 +80,13 @@ mrb_value em_mrb_method_tag(mrb_state *mrb, mrb_value self)
 
 mrb_value em_mrb_method_record(mrb_state *mrb, mrb_value self)
 {
-    printf("START mrb_convert_msgpack\n");
     mf *mf_obj = (mf *)mrb->ud;
-    msgpack_object *record = mf_obj->record;
 
+    return msgpack_obj_to_mrb_value(mrb, mf_obj->record);
+}
+
+mrb_value msgpack_obj_to_mrb_value(mrb_state *mrb, msgpack_object *record)
+{
     int size, i;
     char *s;
     mrb_value mrb_v = mrb_hash_new(mrb);
@@ -90,17 +94,11 @@ mrb_value em_mrb_method_record(mrb_state *mrb, mrb_value self)
     switch(record->type) {
         case MSGPACK_OBJECT_STR:
             s = flb_malloc(record->via.str.size);
-            printf("type = MSGPACK_OBJECT_STR\n");
-            printf("string size = %d\n", record->via.str.size);
             strncpy(s, record->via.str.ptr, record->via.str.size);
             printf("o = %s\n", s);
             break;
         case MSGPACK_OBJECT_MAP:
             size = record->via.map.size;
-
-            printf("type = MSGPACK_OBJECT_MAP\n");
-            printf("object size = %d\n", size);
-
             if (size != 0) {
                 msgpack_object_kv *p = record->via.map.ptr;
                 for (i = 0; i < size; i++) {
@@ -111,8 +109,10 @@ mrb_value em_mrb_method_record(mrb_state *mrb, mrb_value self)
                     char *v = flb_malloc(val->via.str.size);
                     strncpy(k, key->via.str.ptr, key->via.str.size);
                     strncpy(v, val->via.str.ptr, val->via.str.size);
-                    printf("k = %s\n", k);
-                    printf("v = %s\n", v);
+                    k[key->via.str.size] = '\0';
+                    v[val->via.str.size] = '\0';
+                    printf("k = %s (size: %d)\n", k, (size_t)key->via.str.size);
+                    printf("v = %s (size: %d)\n", v, (size_t)val->via.str.size);
                     mrb_hash_set(mrb, mrb_v, mrb_str_new_cstr(mrb, k), mrb_str_new_cstr(mrb, v));
                 }
             }
@@ -143,6 +143,8 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
 
     ctx = flb_calloc(1, sizeof(struct mruby_filter));
     ctx->mf = mf;
+
+    ctx->script = flb_filter_get_property("script", f_ins);
 
     struct RClass *class;
     class = mrb_define_class(ctx->mf->mrb, "Em", ctx->mf->mrb->object_class);
@@ -196,14 +198,21 @@ static int cb_mruby_filter(void *data, size_t bytes,
         ctx->mf->ts = ts;
         ctx->mf->tag = tag;
         ctx->mf->record = p;
-        mrb_value value;
-        mrbc_context *mrb_cxt;
 
-        str = "p Em.record";
-        mrb_cxt = mrbc_context_new(ctx->mf->mrb);
-        value = mrb_load_string_cxt(ctx->mf->mrb, str, mrb_cxt);
-        res = em_mrb_value_to_str(ctx->mf->mrb, value);
+        mrb_value *mrb;
+        mrb = ctx->mf->mrb;
+
+        FILE* fp = fopen(ctx->script, "r");
+        mrb_value obj;
+        obj = mrb_load_file(mrb, fp);
+
+        mrb_value value;
+
+        value = mrb_funcall(mrb, obj, "foo", 3, mrb_str_new_cstr(mrb, tag), mrb_float_value(mrb, ts), msgpack_obj_to_mrb_value(mrb, p));
+        res = em_mrb_value_to_str(mrb, value);
         ctx->mf->count++;
+
+        fclose(fp);
 
 
     }
