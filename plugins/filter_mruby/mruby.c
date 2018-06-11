@@ -145,6 +145,7 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
     ctx->mf = mf;
 
     ctx->script = flb_filter_get_property("script", f_ins);
+    ctx->call = flb_filter_get_property("call", f_ins);
 
     struct RClass *class;
     class = mrb_define_class(ctx->mf->mrb, "Em", ctx->mf->mrb->object_class);
@@ -208,7 +209,7 @@ static int cb_mruby_filter(void *data, size_t bytes,
 
         mrb_value value;
 
-        value = mrb_funcall(mrb, obj, "foo", 3, mrb_str_new_cstr(mrb, tag), mrb_float_value(mrb, ts), msgpack_obj_to_mrb_value(mrb, p));
+        value = mrb_funcall(mrb, obj, ctx->call, 3, mrb_str_new_cstr(mrb, tag), mrb_float_value(mrb, ts), msgpack_obj_to_mrb_value(mrb, p));
         res = em_mrb_value_to_str(mrb, value);
         ctx->mf->count++;
 

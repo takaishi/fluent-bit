@@ -18,6 +18,7 @@ typedef struct mf_t {
 
 struct mruby_filter {
     flb_sds_t script;
+    flb_sds_t call;
     struct mf_t *mf;
 };
 
