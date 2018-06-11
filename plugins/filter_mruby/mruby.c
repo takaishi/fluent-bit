@@ -202,7 +202,7 @@ static int cb_mruby_filter(void *data, size_t bytes,
         str = "p Em.record";
         mrb_cxt = mrbc_context_new(ctx->mf->mrb);
         value = mrb_load_string_cxt(ctx->mf->mrb, str, mrb_cxt);
-        res = em_mrb_value_to_str(ctx, value);
+        res = em_mrb_value_to_str(ctx->mf->mrb, value);
         ctx->mf->count++;
 
 
