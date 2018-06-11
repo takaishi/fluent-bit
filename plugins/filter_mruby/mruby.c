@@ -85,7 +85,6 @@ mrb_value msgpack_obj_to_mrb_value(mrb_state *mrb, msgpack_object *record)
         case MSGPACK_OBJECT_STR:
             s = flb_malloc(record->via.str.size);
             strncpy(s, record->via.str.ptr, record->via.str.size);
-            printf("o = %s\n", s);
             break;
         case MSGPACK_OBJECT_MAP:
             size = record->via.map.size;
@@ -101,31 +100,23 @@ mrb_value msgpack_obj_to_mrb_value(mrb_state *mrb, msgpack_object *record)
                     strncpy(v, val->via.str.ptr, val->via.str.size);
                     k[key->via.str.size] = '\0';
                     v[val->via.str.size] = '\0';
-                    printf("k = %s (size: %d)\n", k, (size_t)key->via.str.size);
-                    printf("v = %s (size: %d)\n", v, (size_t)val->via.str.size);
                     mrb_hash_set(mrb, mrb_v, mrb_str_new_cstr(mrb, k), mrb_str_new_cstr(mrb, v));
                 }
             }
             break;
         default:
-            printf("UNMATCH\n");
-            printf("type = %x\n", record->type);
             break;
     }
-    printf("FINISH mrb_convert_msgpack\n");
-
     return mrb_v;
-
 }
 
 static int cb_mruby_init(struct flb_filter_instance *f_ins,
                          struct flb_config *config,
                          void *data)
 {
-    printf("[DEBUG] cb_mruby_init\n");
     struct mruby_filter *ctx;
-
     struct mf_t *mf;
+
     mf = flb_calloc(1, sizeof(struct mf_t));
     mf->count = 0;
     mf->mrb = mrb_open();
@@ -147,8 +138,7 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
 
     flb_filter_set_context(f_ins, ctx);
 
-
-   return 0;
+    return 0;
 }
 
 static int cb_mruby_filter(void *data, size_t bytes,
@@ -158,8 +148,6 @@ static int cb_mruby_filter(void *data, size_t bytes,
                            void *filter_context,
                            struct flb_config *config)
 {
-    printf("[DEBUG] cb_mruby_filter\n");
-
     struct mruby_filter *ctx = filter_context;
 
     size_t off = 0;
@@ -213,20 +201,19 @@ static int cb_mruby_filter(void *data, size_t bytes,
 
 static int cb_mruby_exit(void *data, struct flb_config *config)
 {
-    printf("[DEBUG] cb_mruby_exit\n");
     struct mruby_filter *ctx;
 
     ctx = data;
     mrb_close(ctx->mf->mrb);
     free(ctx->mf);
- return 0;
+    return 0;
 }
 
 struct flb_filter_plugin filter_mruby_plugin = {
-    .name         = "mruby",
-    .description  = "mruby Scriptiong Filter",
-    .cb_init      = cb_mruby_init,
-    .cb_filter    = cb_mruby_filter,
-    .cb_exit      = cb_mruby_exit,
-    .flags        = 0
+        .name         = "mruby",
+        .description  = "mruby Scriptiong Filter",
+        .cb_init      = cb_mruby_init,
+        .cb_filter    = cb_mruby_filter,
+        .cb_exit      = cb_mruby_exit,
+        .flags        = 0
 };
