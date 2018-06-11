@@ -8,7 +8,6 @@
 #include "mruby/string.h"
 
 typedef struct mf_t {
-    int count;
     double ts;
     char *tag;
     msgpack_object *record;

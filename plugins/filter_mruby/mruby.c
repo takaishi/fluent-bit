@@ -44,14 +44,6 @@ char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
     return str;
 }
 
-mrb_value em_mrb_method_count(mrb_state *mrb, mrb_value self)
-{
-    mf *mf_obj = (mf *)mrb->ud;
-    int count = mf_obj->count;
-
-    return mrb_fixnum_value(count);
-}
-
 mrb_value em_mrb_method_timestamp(mrb_state *mrb, mrb_value self)
 {
     mf *mf_obj = (mf *)mrb->ud;
@@ -118,7 +110,6 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
     struct mf_t *mf;
 
     mf = flb_calloc(1, sizeof(struct mf_t));
-    mf->count = 0;
     mf->mrb = mrb_open();
     mf->mrb->ud = mf;
 
@@ -131,7 +122,6 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
     struct RClass *class;
     class = mrb_define_class(ctx->mf->mrb, "Em", ctx->mf->mrb->object_class);
 
-    mrb_define_class_method(ctx->mf->mrb, class, "count", em_mrb_method_count, MRB_ARGS_NONE());
     mrb_define_class_method(ctx->mf->mrb, class, "timestamp", em_mrb_method_timestamp, MRB_ARGS_NONE());
     mrb_define_class_method(ctx->mf->mrb, class, "tag", em_mrb_method_tag, MRB_ARGS_NONE());
     mrb_define_class_method(ctx->mf->mrb, class, "record", em_mrb_method_record, MRB_ARGS_NONE());
@@ -189,7 +179,6 @@ static int cb_mruby_filter(void *data, size_t bytes,
 
         value = mrb_funcall(mrb, obj, ctx->call, 3, mrb_str_new_cstr(mrb, tag), mrb_float_value(mrb, ts), msgpack_obj_to_mrb_value(mrb, p));
         res = em_mrb_value_to_str(mrb, value);
-        ctx->mf->count++;
 
         fclose(fp);
 
