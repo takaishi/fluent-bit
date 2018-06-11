@@ -2,6 +2,7 @@
 #include <msgpack.h>
 #include <fluent-bit.h>
 #include <fluent-bit/flb_time.h>
+#include <mruby/hash.h>
 
 #include "mruby_config.h"
 
@@ -43,6 +44,13 @@ char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
             asprintf(&str, "(string) %s\n", RSTRING_PTR( value ));
             break;
         }
+        case MRB_TT_HASH: {
+            mrb_value keys = mrb_hash_keys(core, value);
+            int len = RARRAY_LEN(keys);
+            for (int i = 0; i < len; i++) {
+            char *inspect = mrb_str_to_cstr(core, mrb_inspect(core, value));
+            asprintf(&str, "(hash) %s\n", inspect);
+        }
     }
 
     return str;
@@ -72,6 +80,57 @@ mrb_value em_mrb_method_tag(mrb_state *mrb, mrb_value self)
     return mrb_str_new_cstr(mrb, tag);
 }
 
+mrb_value em_mrb_method_record(mrb_state *mrb, mrb_value self)
+{
+    printf("START mrb_convert_msgpack\n");
+    mf *mf_obj = (mf *)mrb->ud;
+    msgpack_object *record = mf_obj->record;
+
+    int size, i;
+    char *s;
+    mrb_value mrb_v = mrb_hash_new(mrb);
+
+    switch(record->type) {
+        case MSGPACK_OBJECT_STR:
+            s = flb_malloc(record->via.str.size);
+            printf("type = MSGPACK_OBJECT_STR\n");
+            printf("string size = %d\n", record->via.str.size);
+            strncpy(s, record->via.str.ptr, record->via.str.size);
+            printf("o = %s\n", s);
+            break;
+        case MSGPACK_OBJECT_MAP:
+            size = record->via.map.size;
+
+            printf("type = MSGPACK_OBJECT_MAP\n");
+            printf("object size = %d\n", size);
+
+            if (size != 0) {
+                msgpack_object_kv *p = record->via.map.ptr;
+                for (i = 0; i < size; i++) {
+                    msgpack_object *key = &(p+i)->key;
+                    msgpack_object *val = &(p+i)->val;
+
+                    char *k = flb_malloc(key->via.str.size);
+                    char *v = flb_malloc(val->via.str.size);
+                    strncpy(k, key->via.str.ptr, key->via.str.size);
+                    strncpy(v, val->via.str.ptr, val->via.str.size);
+                    printf("k = %s\n", k);
+                    printf("v = %s\n", v);
+                    mrb_hash_set(mrb, mrb_v, mrb_str_new_cstr(mrb, k), mrb_str_new_cstr(mrb, v));
+                }
+            }
+            break;
+        default:
+            printf("UNMATCH\n");
+            printf("type = %x\n", record->type);
+            break;
+    }
+    printf("FINISH mrb_convert_msgpack\n");
+
+    return mrb_v;
+
+}
+
 static int cb_mruby_init(struct flb_filter_instance *f_ins,
                          struct flb_config *config,
                          void *data)
@@ -94,6 +153,7 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
     mrb_define_class_method(ctx->mf->mrb, class, "count", em_mrb_method_count, MRB_ARGS_NONE());
     mrb_define_class_method(ctx->mf->mrb, class, "timestamp", em_mrb_method_timestamp, MRB_ARGS_NONE());
     mrb_define_class_method(ctx->mf->mrb, class, "tag", em_mrb_method_tag, MRB_ARGS_NONE());
+    mrb_define_class_method(ctx->mf->mrb, class, "record", em_mrb_method_record, MRB_ARGS_NONE());
 
     flb_filter_set_context(f_ins, ctx);
 
@@ -138,10 +198,11 @@ static int cb_mruby_filter(void *data, size_t bytes,
 
         ctx->mf->ts = ts;
         ctx->mf->tag = tag;
+        ctx->mf->record = p;
         mrb_value value;
         mrbc_context *mrb_cxt;
 
-        str = "p Em.tag";
+        str = "p Em.record";
         mrb_cxt = mrbc_context_new(ctx->mf->mrb);
         value = mrb_load_string_cxt(ctx->mf->mrb, str, mrb_cxt);
         res = em_mrb_value_to_str(ctx, value);

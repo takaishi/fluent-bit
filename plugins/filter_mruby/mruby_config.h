@@ -11,6 +11,7 @@ typedef struct mf_t {
     int count;
     double ts;
     char *tag;
+    msgpack_object *record;
     struct mrb_state *mrb;
 
 } mf;
