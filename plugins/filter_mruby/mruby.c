@@ -4,6 +4,7 @@
 #include <fluent-bit/flb_time.h>
 #include <mruby/hash.h>
 #include <mruby/include/mruby/variable.h>
+#include <mruby/include/mruby/array.h>
 
 #include "mruby_config.h"
 
@@ -42,6 +43,36 @@ char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
     }
 
     return str;
+}
+
+void mrb_tommsgpack(mrb_state *state, mrb_value value, msgpack_packer *pck)
+{
+    enum mrb_vtype type = mrb_type(value);
+
+    if (mrb_undef_p(value) || mrb_nil_p(value)) {
+        printf("undef or nil");
+    }
+
+    switch (type) {
+        case MRB_TT_HASH: {
+            mrb_value keys = mrb_hash_keys(state, value);
+            int len = RARRAY_LEN(keys);
+
+            msgpack_pack_map(pck, len);
+            for (int i = 0; i < len; i++) {
+                mrb_value key = mrb_ary_ref(state, keys, i);
+                char *k;
+                k = RSTRING_PTR(key),
+                msgpack_pack_str(pck, strlen(k));
+                msgpack_pack_str_body(pck, k, strlen(k));
+                char *v;
+                v = RSTRING_PTR(mrb_hash_get(state, value, key));
+                msgpack_pack_str(pck, strlen(v));
+                msgpack_pack_str_body(pck, v, strlen(v));
+            }
+        }
+    }
+
 }
 
 mrb_value em_mrb_method_timestamp(mrb_state *mrb, mrb_value self)
@@ -147,7 +178,6 @@ static int cb_mruby_filter(void *data, size_t bytes,
     msgpack_packer tmp_pck;
     msgpack_unpacked result;
     struct flb_time t;
-    char *str;
     char *res;
 
     msgpack_sbuffer_init(&tmp_sbuf);
@@ -178,13 +208,20 @@ static int cb_mruby_filter(void *data, size_t bytes,
         mrb_value value;
 
         value = mrb_funcall(mrb, obj, ctx->call, 3, mrb_str_new_cstr(mrb, tag), mrb_float_value(mrb, ts), msgpack_obj_to_mrb_value(mrb, p));
-        res = em_mrb_value_to_str(mrb, value);
+
+        msgpack_pack_array(&tmp_pck, 2);
+        flb_time_from_double(&t, ts);
+        flb_time_append_to_msgpack(&t, &tmp_pck, 0);
+        mrb_tommsgpack(mrb, value, &tmp_pck);
 
         fclose(fp);
-
-
+        msgpack_sbuffer_destroy(&data_sbuf);
     }
-    printf("res = %s\n", res);
+    msgpack_unpacked_destroy(&result);
+
+    *out_buf   = tmp_sbuf.data;
+    *out_bytes = tmp_sbuf.size;
+
     return FLB_FILTER_MODIFIED;
 }
 
