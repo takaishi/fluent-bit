@@ -118,20 +118,23 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
     struct mf_t *mf;
     mrb_value obj;
 
+    // Create mrb_state
     mf = flb_calloc(1, sizeof(struct mf_t));
     mf->mrb = mrb_open();
     mf->mrb->ud = mf;
 
+    // Create context
     ctx = flb_calloc(1, sizeof(struct mruby_filter));
     ctx->mf = mf;
-
     ctx->call = flb_filter_get_property("call", f_ins);
 
+    // Load mruby script
     FILE* fp = fopen(flb_filter_get_property("script", f_ins), "r");
     obj = mrb_load_file(mf->mrb, fp);
     ctx->mf->obj = obj;
     fclose(fp);
 
+    // Set context
     flb_filter_set_context(f_ins, ctx);
 
     return 0;
