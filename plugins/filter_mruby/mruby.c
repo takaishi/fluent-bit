@@ -20,25 +20,24 @@ void mrb_tommsgpack(mrb_state *state, mrb_value value, msgpack_packer *pck)
     }
 
     switch (type) {
+        case MRB_TT_STRING: {
+            char *c = RSTRING_PTR(value);
+            msgpack_pack_str(pck, strlen(c));
+            msgpack_pack_str_body(pck, c, strlen(c));
+            break;
+        }
         case MRB_TT_HASH: {
             mrb_value keys = mrb_hash_keys(state, value);
             int len = RARRAY_LEN(keys);
-
             msgpack_pack_map(pck, len);
             for (int i = 0; i < len; i++) {
                 mrb_value key = mrb_ary_ref(state, keys, i);
-                char *k;
-                k = RSTRING_PTR(key),
-                msgpack_pack_str(pck, strlen(k));
-                msgpack_pack_str_body(pck, k, strlen(k));
-                char *v;
-                v = RSTRING_PTR(mrb_hash_get(state, value, key));
-                msgpack_pack_str(pck, strlen(v));
-                msgpack_pack_str_body(pck, v, strlen(v));
+                mrb_tommsgpack(state, key, pck);
+                mrb_tommsgpack(state, mrb_hash_get(state, value, key), pck);
             }
+            break;
         }
     }
-
 }
 
 mrb_value msgpack_obj_to_mrb_value(mrb_state *mrb, msgpack_object *record)
