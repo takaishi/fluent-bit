@@ -11,40 +11,6 @@
 #define FLB_FILTER_MODIFIED 1
 #define FLB_FILTER_NOTOUCH  2
 
-char *em_mrb_value_to_str(mrb_state *core, mrb_value value) {
-    char *str;
-    enum mrb_vtype type = mrb_type(value);
-
-    if (mrb_undef_p(value) || mrb_nil_p(value)) {
-        printf("undef or nil");
-        asprintf(&str, "(nil)");
-        return str;
-    }
-
-    switch (type) {
-        case MRB_TT_FIXNUM: {
-            asprintf(&str, "(integer) %lld\n",mrb_fixnum(value));
-            break;
-
-        }
-        case MRB_TT_FLOAT: {
-            asprintf(&str, "(float) %lf\n",mrb_float(value));
-            break;
-
-        }
-        case MRB_TT_STRING: {
-            asprintf(&str, "(string) %s\n", RSTRING_PTR( value ));
-            break;
-        }
-        case MRB_TT_HASH: {
-            char *inspect = mrb_str_to_cstr(core, mrb_inspect(core, value));
-            asprintf(&str, "(hash) %s\n", inspect);
-        }
-    }
-
-    return str;
-}
-
 void mrb_tommsgpack(mrb_state *state, mrb_value value, msgpack_packer *pck)
 {
     enum mrb_vtype type = mrb_type(value);
