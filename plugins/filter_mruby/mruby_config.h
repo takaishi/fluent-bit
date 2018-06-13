@@ -12,7 +12,7 @@ typedef struct mf_t {
     char *tag;
     msgpack_object *record;
     mrb_value obj;
-    struct mrb_state *mrb;
+    struct mrb_state *mrb_state;
 
 } mf;
 

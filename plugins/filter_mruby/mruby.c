@@ -120,8 +120,8 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
 
     // Create mrb_state
     mf = flb_calloc(1, sizeof(struct mf_t));
-    mf->mrb = mrb_open();
-    mf->mrb->ud = mf;
+    mf->mrb_state = mrb_open();
+    mf->mrb_state->ud = mf;
 
     // Create context
     ctx = flb_calloc(1, sizeof(struct mruby_filter));
@@ -130,7 +130,7 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
 
     // Load mruby script
     FILE* fp = fopen(flb_filter_get_property("script", f_ins), "r");
-    obj = mrb_load_file(mf->mrb, fp);
+    obj = mrb_load_file(mf->mrb_state, fp);
     ctx->mf->obj = obj;
     fclose(fp);
 
@@ -151,12 +151,11 @@ static int cb_mruby_filter(void *data, size_t bytes,
 
     size_t off = 0;
     double ts;
+    struct flb_time t;
     msgpack_object *p;
     msgpack_sbuffer tmp_sbuf;
     msgpack_packer tmp_pck;
     msgpack_unpacked result;
-    struct flb_time t;
-    char *res;
 
     msgpack_sbuffer_init(&tmp_sbuf);
     msgpack_packer_init(&tmp_pck, &tmp_sbuf, msgpack_sbuffer_write);
@@ -165,6 +164,10 @@ static int cb_mruby_filter(void *data, size_t bytes,
     while (msgpack_unpack_next(&result, data, bytes, &off)) {
         msgpack_packer data_pck;
         msgpack_sbuffer data_sbuf;
+        mrb_state *mrb_state;
+        mrb_value value;
+
+        mrb_state = ctx->mf->mrb_state;
 
         msgpack_sbuffer_init(&data_sbuf);
         msgpack_packer_init(&data_pck, &data_sbuf, msgpack_sbuffer_write);
@@ -176,18 +179,12 @@ static int cb_mruby_filter(void *data, size_t bytes,
         ctx->mf->tag = tag;
         ctx->mf->record = p;
 
-        mrb_value *mrb;
-        mrb = ctx->mf->mrb;
-
-
-        mrb_value value;
-
-        value = mrb_funcall(mrb, ctx->mf->obj, ctx->call, 3, mrb_str_new_cstr(mrb, tag), mrb_float_value(mrb, ts), msgpack_obj_to_mrb_value(mrb, p));
+        value = mrb_funcall(mrb_state, ctx->mf->obj, ctx->call, 3, mrb_str_new_cstr(mrb_state, tag), mrb_float_value(mrb_state, ts), msgpack_obj_to_mrb_value(mrb_state, p));
 
         msgpack_pack_array(&tmp_pck, 2);
         flb_time_from_double(&t, ts);
         flb_time_append_to_msgpack(&t, &tmp_pck, 0);
-        mrb_tommsgpack(mrb, value, &tmp_pck);
+        mrb_tommsgpack(mrb_state, value, &tmp_pck);
 
         msgpack_sbuffer_destroy(&data_sbuf);
     }
@@ -204,7 +201,7 @@ static int cb_mruby_exit(void *data, struct flb_config *config)
     struct mruby_filter *ctx;
 
     ctx = data;
-    mrb_close(ctx->mf->mrb);
+    mrb_close(ctx->mf->mrb_state);
     free(ctx->mf);
     return 0;
 }
