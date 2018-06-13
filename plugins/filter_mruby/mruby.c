@@ -116,6 +116,7 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
 {
     struct mruby_filter *ctx;
     struct mf_t *mf;
+    mrb_value obj;
 
     mf = flb_calloc(1, sizeof(struct mf_t));
     mf->mrb = mrb_open();
@@ -124,8 +125,12 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
     ctx = flb_calloc(1, sizeof(struct mruby_filter));
     ctx->mf = mf;
 
-    ctx->script = flb_filter_get_property("script", f_ins);
     ctx->call = flb_filter_get_property("call", f_ins);
+
+    FILE* fp = fopen(flb_filter_get_property("script", f_ins), "r");
+    obj = mrb_load_file(mf->mrb, fp);
+    ctx->mf->obj = obj;
+    fclose(fp);
 
     flb_filter_set_context(f_ins, ctx);
 
@@ -171,20 +176,16 @@ static int cb_mruby_filter(void *data, size_t bytes,
         mrb_value *mrb;
         mrb = ctx->mf->mrb;
 
-        FILE* fp = fopen(ctx->script, "r");
-        mrb_value obj;
-        obj = mrb_load_file(mrb, fp);
 
         mrb_value value;
 
-        value = mrb_funcall(mrb, obj, ctx->call, 3, mrb_str_new_cstr(mrb, tag), mrb_float_value(mrb, ts), msgpack_obj_to_mrb_value(mrb, p));
+        value = mrb_funcall(mrb, ctx->mf->obj, ctx->call, 3, mrb_str_new_cstr(mrb, tag), mrb_float_value(mrb, ts), msgpack_obj_to_mrb_value(mrb, p));
 
         msgpack_pack_array(&tmp_pck, 2);
         flb_time_from_double(&t, ts);
         flb_time_append_to_msgpack(&t, &tmp_pck, 0);
         mrb_tommsgpack(mrb, value, &tmp_pck);
 
-        fclose(fp);
         msgpack_sbuffer_destroy(&data_sbuf);
     }
     msgpack_unpacked_destroy(&result);

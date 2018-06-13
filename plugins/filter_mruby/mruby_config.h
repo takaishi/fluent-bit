@@ -11,12 +11,12 @@ typedef struct mf_t {
     double ts;
     char *tag;
     msgpack_object *record;
+    mrb_value obj;
     struct mrb_state *mrb;
 
 } mf;
 
 struct mruby_filter {
-    flb_sds_t script;
     flb_sds_t call;
     struct mf_t *mf;
 };
