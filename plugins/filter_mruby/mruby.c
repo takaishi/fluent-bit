@@ -75,29 +75,6 @@ void mrb_tommsgpack(mrb_state *state, mrb_value value, msgpack_packer *pck)
 
 }
 
-mrb_value em_mrb_method_timestamp(mrb_state *mrb, mrb_value self)
-{
-    mf *mf_obj = (mf *)mrb->ud;
-    double ts = mf_obj->ts;
-
-    return mrb_float_value(mrb, ts);
-}
-
-mrb_value em_mrb_method_tag(mrb_state *mrb, mrb_value self)
-{
-    mf *mf_obj = (mf *)mrb->ud;
-    char *tag = mf_obj->tag;
-
-    return mrb_str_new_cstr(mrb, tag);
-}
-
-mrb_value em_mrb_method_record(mrb_state *mrb, mrb_value self)
-{
-    mf *mf_obj = (mf *)mrb->ud;
-
-    return msgpack_obj_to_mrb_value(mrb, mf_obj->record);
-}
-
 mrb_value msgpack_obj_to_mrb_value(mrb_state *mrb, msgpack_object *record)
 {
     int size, i;
@@ -149,13 +126,6 @@ static int cb_mruby_init(struct flb_filter_instance *f_ins,
 
     ctx->script = flb_filter_get_property("script", f_ins);
     ctx->call = flb_filter_get_property("call", f_ins);
-
-    struct RClass *class;
-    class = mrb_define_class(ctx->mf->mrb, "Em", ctx->mf->mrb->object_class);
-
-    mrb_define_class_method(ctx->mf->mrb, class, "timestamp", em_mrb_method_timestamp, MRB_ARGS_NONE());
-    mrb_define_class_method(ctx->mf->mrb, class, "tag", em_mrb_method_tag, MRB_ARGS_NONE());
-    mrb_define_class_method(ctx->mf->mrb, class, "record", em_mrb_method_record, MRB_ARGS_NONE());
 
     flb_filter_set_context(f_ins, ctx);
 
