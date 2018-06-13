@@ -44,12 +44,14 @@ mrb_value msgpack_obj_to_mrb_value(mrb_state *mrb, msgpack_object *record)
 {
     int size, i;
     char *s;
-    mrb_value mrb_v = mrb_hash_new(mrb);
+    mrb_value mrb_v;
 
     switch(record->type) {
         case MSGPACK_OBJECT_STR:
             s = flb_malloc(record->via.str.size);
             strncpy(s, record->via.str.ptr, record->via.str.size);
+            s[record->via.str.size] = '\0';
+            mrb_v = mrb_str_new_cstr(mrb, s);
             break;
         case MSGPACK_OBJECT_MAP:
             size = record->via.map.size;
@@ -58,14 +60,8 @@ mrb_value msgpack_obj_to_mrb_value(mrb_state *mrb, msgpack_object *record)
                 for (i = 0; i < size; i++) {
                     msgpack_object *key = &(p+i)->key;
                     msgpack_object *val = &(p+i)->val;
-
-                    char *k = flb_malloc(key->via.str.size);
-                    char *v = flb_malloc(val->via.str.size);
-                    strncpy(k, key->via.str.ptr, key->via.str.size);
-                    strncpy(v, val->via.str.ptr, val->via.str.size);
-                    k[key->via.str.size] = '\0';
-                    v[val->via.str.size] = '\0';
-                    mrb_hash_set(mrb, mrb_v, mrb_str_new_cstr(mrb, k), mrb_str_new_cstr(mrb, v));
+                    mrb_v = mrb_hash_new(mrb);
+                    mrb_hash_set(mrb, mrb_v, msgpack_obj_to_mrb_value(mrb, key), msgpack_obj_to_mrb_value(mrb, val));
                 }
             }
             break;
