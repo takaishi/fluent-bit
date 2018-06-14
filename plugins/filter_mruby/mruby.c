@@ -20,6 +20,10 @@ void mrb_tommsgpack(mrb_state *state, mrb_value value, msgpack_packer *pck)
     }
 
     switch (type) {
+        case MRB_TT_FIXNUM: {
+            msgpack_pack_fix_int32(pck, mrb_fixnum(value));
+            break;
+        }
         case MRB_TT_STRING: {
             char *c = RSTRING_PTR(value);
             msgpack_pack_str(pck, strlen(c));
