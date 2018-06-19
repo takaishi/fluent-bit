@@ -24,6 +24,10 @@ void mrb_tommsgpack(mrb_state *state, mrb_value value, msgpack_packer *pck)
             msgpack_pack_fix_int32(pck, mrb_fixnum(value));
             break;
         }
+        case MRB_TT_FLOAT: {
+            msgpack_pack_float(pck, mrb_float(value));
+            break;
+        }
         case MRB_TT_STRING: {
             char *c = RSTRING_PTR(value);
             msgpack_pack_str(pck, strlen(c));
